@@ -1,8 +1,10 @@
 package com.ashutosh.animeproject.data
 
+import androidx.room.Embedded
+
 data class Trailer(
     val embed_url: String,
-    val images: ImagesX,
+    @Embedded(prefix = "images_") val images: ImagesX,
     val url: String,
     val youtube_id: String
 )

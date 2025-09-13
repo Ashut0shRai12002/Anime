@@ -2,13 +2,12 @@ package com.ashutosh.animeproject.Dao
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
-import com.ashutosh.animeproject.data.Entity.AnimeEntity
+import androidx.room.TypeConverters
+import com.ashutosh.animeproject.data.AnimeResponse
+import com.ashutosh.animeproject.data.Converters
 
-@Database(
-    entities = [AnimeEntity::class], // 👈 Your Room Entity
-    version = 1,
-    exportSchema = false
-)
+@Database(entities = [AnimeResponse::class], version = 1, exportSchema = false)
+@TypeConverters(Converters::class)
 abstract class AnimeDatabase : RoomDatabase() {
     abstract fun animeDao(): AnimeDao
 }

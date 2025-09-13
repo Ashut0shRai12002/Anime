@@ -10,29 +10,33 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.ashutosh.animeproject.data.AnimeResponse
-import com.ashutosh.animeproject.videwmodel.HomeViewModel
-import com.ashutosh.animeproject.videwmodel.UiState
+import com.ashutosh.animeproject.viewmodel.HomeViewModel
+import com.ashutosh.animeproject.viewmodel.UiState
 
 @Composable
 fun HomeScreen(
-    onAnimeClick: (AnimeResponse) -> Unit,
-    viewModel: HomeViewModel = viewModel()
+    viewModel: HomeViewModel,
+    onAnimeClick: (AnimeResponse) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    when(uiState) {
-        is UiState.Loading -> {
-            Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+    when (uiState) {
+        is UiState.Loading ->{
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
                 CircularProgressIndicator()
             }
-        }
 
+        }
         is UiState.Success -> {
             val animeList = (uiState as UiState.Success).animeList
             LazyColumn(
@@ -44,15 +48,10 @@ fun HomeScreen(
                 }
             }
         }
-
-        is UiState.Error -> {
-            val message = (uiState as UiState.Error).message
-            Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                Text("Error: $message")
-            }
-        }
+        is UiState.Error -> Text("Failed to load anime")
     }
 }
+
 @Composable
 fun AnimeItem(anime: AnimeResponse, onClick: () -> Unit) {
     Card(
@@ -61,20 +60,20 @@ fun AnimeItem(anime: AnimeResponse, onClick: () -> Unit) {
             .height(150.dp)
             .clickable { onClick() }
     ) {
-        Row(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+        Row(Modifier.fillMaxSize().padding(8.dp)) {
             Image(
-                painter = rememberAsyncImagePainter(anime.images.jpg.image_url),
+                painter = rememberAsyncImagePainter(anime.images?.jpg?.image_url),
                 contentDescription = anime.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.width(100.dp).fillMaxHeight()
+                modifier = Modifier
+                    .width(100.dp)
+                    .fillMaxHeight(),
+                contentScale = ContentScale.Crop
             )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(
-                verticalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxHeight()
-            ) {
-                Text(text = anime.title, style = MaterialTheme.typography.titleMedium)
-                Text(text = "Score: ${anime.score}", style = MaterialTheme.typography.bodyMedium)
+
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text(anime.title, style = MaterialTheme.typography.titleMedium)
+                Text("Score: ${anime.score}", style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
