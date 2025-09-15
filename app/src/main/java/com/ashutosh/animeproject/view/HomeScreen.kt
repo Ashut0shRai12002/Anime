@@ -9,38 +9,40 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
-import com.ashutosh.animeproject.data.AnimeResponse
+import com.ashutosh.animeproject.data.Entity.AnimeUiModel
 import com.ashutosh.animeproject.viewmodel.HomeViewModel
 import com.ashutosh.animeproject.viewmodel.UiState
 
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
-    onAnimeClick: (AnimeResponse) -> Unit
+    onAnimeClick: (AnimeUiModel) -> Unit // 👈 changed type
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     when (uiState) {
-        is UiState.Loading ->{
+        is UiState.Loading -> {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
             }
-
         }
         is UiState.Success -> {
             val animeList = (uiState as UiState.Success).animeList
             LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(8.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(animeList) { anime ->
@@ -53,16 +55,20 @@ fun HomeScreen(
 }
 
 @Composable
-fun AnimeItem(anime: AnimeResponse, onClick: () -> Unit) {
+fun AnimeItem(anime: AnimeUiModel, onClick: () -> Unit) { // 👈 changed type
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(150.dp)
             .clickable { onClick() }
     ) {
-        Row(Modifier.fillMaxSize().padding(8.dp)) {
+        Row(
+            Modifier
+                .fillMaxSize()
+                .padding(8.dp)
+        ) {
             Image(
-                painter = rememberAsyncImagePainter(anime.images?.jpg?.image_url),
+                painter = rememberAsyncImagePainter(anime.imageUrl),
                 contentDescription = anime.title,
                 modifier = Modifier
                     .width(100.dp)
@@ -73,7 +79,7 @@ fun AnimeItem(anime: AnimeResponse, onClick: () -> Unit) {
             Spacer(Modifier.width(12.dp))
             Column {
                 Text(anime.title, style = MaterialTheme.typography.titleMedium)
-                Text("Score: ${anime.score}", style = MaterialTheme.typography.bodyMedium)
+                Text("Score: ${anime.score ?: "N/A"}", style = MaterialTheme.typography.bodyMedium)
             }
         }
     }

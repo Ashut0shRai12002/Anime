@@ -14,6 +14,10 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import com.ashutosh.animeproject.ApiService.ApiService
+import com.ashutosh.animeproject.data.Entity.AnimeUiModel
+import com.ashutosh.animeproject.data.Entity.toUiModel
+import kotlinx.coroutines.flow.count
+import kotlinx.coroutines.flow.map
 
 fun isInternetAvailable(context: Context): Boolean {
     val connectivityManager =
@@ -24,7 +28,7 @@ fun isInternetAvailable(context: Context): Boolean {
 }
 sealed class UiState {
     object Loading : UiState()
-    data class Success(val animeList: List<AnimeResponse>) : UiState()
+    data class Success(val animeList: List<AnimeUiModel>) : UiState()
     data class Error(val message: String) : UiState()
 }
 class HomeViewModel(
@@ -38,30 +42,59 @@ class HomeViewModel(
 
     init {
         viewModelScope.launch {
-            try {
-                val localList = repository.getLocalAnimeList()
-                Log.d("Ashutoshhh", " local Db " + localList)
-
-                if (!isInternetAvailable(context)) {
-                    // No internet, show cached data
-                    if (localList.isNotEmpty()) {
-                        _uiState.value = UiState.Success(localList)
-                    } else {
-                        _uiState.value = UiState.Error("No internet and no cached data")
-                    }
-                } else {
-                    // Internet is available, fetch from API
-                    repository.refreshAnimeList()
-                    val response  = api.getTopAnime()
-
-
-                    _uiState.value = UiState.Success(response.data)
+            if (!isInternetAvailable(context)) {
+                // Collect the Flow<List<AnimeEntity>>
+                Log.d("Offline", "True ")
+                repository.getLocalAnimeList().collect { localList ->
+                        _uiState.value = UiState.Success(
+                            localList.map { it.toUiModel() }
+                        )
                 }
 
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _uiState.value = UiState.Error("Failed to load anime")
+            } else {
+                Log.d("Offline", "False ")
+                repository.refreshAnimeList()
+                val response = api.getTopAnime()
+                _uiState.value = UiState.Success(
+                    response.data.map { it.toUiModel() }
+                )
             }
         }
     }
+//        viewModelScope.launch {
+//            if (!isInternetAvailable(context)) {
+//                val localList = repository.getLocalAnimeList()
+//                _uiState.value = UiState.Success(localList.map { it.toUiModel() }  , true)
+//            } else {
+//                repository.refreshAnimeList()
+//                val response = api.getTopAnime()
+//                _uiState.value = UiState.Success(response.data.map { it.toUiModel() } , false)
+//            }
+//
+////            try {
+////                val localList = repository.getCachedAnime()
+////
+////                if (!isInternetAvailable(context)) {
+////                    // No internet, show cached data
+////                    if (localList.count() >= 0) {
+////                        _uiState.value = UiState.Success(localList)
+////                    } else {
+////                        _uiState.value = UiState.Error("No internet and no cached data")
+////                    }
+////                     Log.d("Ashutoshh", "Offline : true")
+////                } else {
+////                    // Internet is available, fetch from API
+////                    repository.refreshAnimeList()
+////                    val response  = api.getTopAnime()
+////
+////
+////                    _uiState.value = UiState.Success(response.data)
+////                }
+////
+////            } catch (e: Exception) {
+////                e.printStackTrace()
+////                _uiState.value = UiState.Error("Failed to load anime")
+////            }
+//        }
+
 }
