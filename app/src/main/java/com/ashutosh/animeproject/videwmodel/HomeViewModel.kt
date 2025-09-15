@@ -39,16 +39,17 @@ class HomeViewModel(
     init {
         viewModelScope.launch {
             try {
-                val localList = repository.getLocalAnimeList()
-                Log.d("Ashutoshhh", " local Db " + localList)
+//                val localList = repository.getLocalAnimeList()
+                Log.d("Ashutoshhh", " local Db " )
 
                 if (!isInternetAvailable(context)) {
                     // No internet, show cached data
-                    if (localList.isNotEmpty()) {
-                        _uiState.value = UiState.Success(localList)
-                    } else {
-                        _uiState.value = UiState.Error("No internet and no cached data")
-                    }
+//                    if (localList.isNotEmpty()) {
+//                        _uiState.value = UiState.Success(localList)
+//                    } else {
+//                        _uiState.value = UiState.Error("No internet and no cached data")
+//                    }
+                    Log.d("Ashutoshh", "Offline : true")
                 } else {
                     // Internet is available, fetch from API
                     repository.refreshAnimeList()
