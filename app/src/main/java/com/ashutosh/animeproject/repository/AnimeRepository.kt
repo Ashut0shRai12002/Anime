@@ -14,7 +14,9 @@ class AnimeRepository(
 
 ) {
     fun getCachedAnime(): Flow<List<AnimeEntity>> = dao.getAllAnime()
-
+    suspend fun getLocalAnimeList(): Flow<List<AnimeEntity>> {
+        return dao.getAllAnime()
+    }
     suspend fun refreshAnimeList() {
         try {
             try {
