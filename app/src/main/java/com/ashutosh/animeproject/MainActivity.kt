@@ -10,6 +10,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.room.Room
+import androidx.work.Constraints
+
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import com.ashutosh.animeproject.ApiService.RetrofitClient
 import com.ashutosh.animeproject.Dao.AnimeDatabase
 import com.ashutosh.animeproject.Dao.HomeViewModelFactory
@@ -17,6 +22,7 @@ import com.ashutosh.animeproject.repository.AnimeRepository
 import com.ashutosh.animeproject.view.DetailScreen
 import com.ashutosh.animeproject.view.HomeScreen
 import com.ashutosh.animeproject.viewmodel.HomeViewModel
+import com.ashutosh.animeproject.worker.SyncWorker
 
 class MainActivity : ComponentActivity() {
 
@@ -25,11 +31,23 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         val db = Room.databaseBuilder(
             applicationContext,
             AnimeDatabase::class.java,
             "anime_db"
         ).build()
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+            .build()
+
+        // ✅ Schedule background sync whenever network is available
+        val workRequest = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setConstraints(
+                constraints
+            ).build()
+
+        WorkManager.getInstance(this).enqueue(workRequest)
         setContent {
             val navController = rememberNavController()
             val repository = AnimeRepository(RetrofitClient.api, db.animeDao())

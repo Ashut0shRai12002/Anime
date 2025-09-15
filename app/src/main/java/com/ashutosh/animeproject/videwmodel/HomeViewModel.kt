@@ -1,24 +1,21 @@
 package com.ashutosh.animeproject.viewmodel
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.util.Log
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ashutosh.animeproject.data.AnimeResponse
+import com.ashutosh.animeproject.ApiService.ApiService
+import com.ashutosh.animeproject.data.Entity.AnimeUiModel
+import com.ashutosh.animeproject.data.Entity.toUiModel
 import com.ashutosh.animeproject.repository.AnimeRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
-import com.ashutosh.animeproject.ApiService.ApiService
-import com.ashutosh.animeproject.data.Entity.AnimeUiModel
-import com.ashutosh.animeproject.data.Entity.toUiModel
-import kotlinx.coroutines.flow.count
-import kotlinx.coroutines.flow.map
+import retrofit2.HttpException
 
+// Check internet availability
 fun isInternetAvailable(context: Context): Boolean {
     val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -26,11 +23,14 @@ fun isInternetAvailable(context: Context): Boolean {
     val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
     return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
 }
+
+// UI state sealed class
 sealed class UiState {
     object Loading : UiState()
     data class Success(val animeList: List<AnimeUiModel>) : UiState()
     data class Error(val message: String) : UiState()
 }
+
 class HomeViewModel(
     private val api: ApiService,
     private val repository: AnimeRepository,
@@ -42,59 +42,42 @@ class HomeViewModel(
 
     init {
         viewModelScope.launch {
-            if (!isInternetAvailable(context)) {
-                // Collect the Flow<List<AnimeEntity>>
-                Log.d("Offline", "True ")
-                repository.getLocalAnimeList().collect { localList ->
-                        _uiState.value = UiState.Success(
-                            localList.map { it.toUiModel() }
-                        )
-                }
+            observeLocalAnime() // Step 1: observe DB
+            fetchFromApiIfOnline() // Step 2: fetch from API if online
+        }
+    }
 
-            } else {
-                Log.d("Offline", "False ")
-                repository.refreshAnimeList()
-                val response = api.getTopAnime()
-                _uiState.value = UiState.Success(
-                    response.data.map { it.toUiModel() }
-                )
+    // Step 1: Observe cached anime from DB
+    private fun observeLocalAnime() {
+        viewModelScope.launch {
+            repository.getCachedAnime().collect { localList ->
+                if (localList.isNotEmpty()) {
+                    _uiState.value = UiState.Success(localList.map { it.toUiModel() })
+                    Log.d("HomeViewModel", "Showing cached anime")
+                } else {
+                    _uiState.value = UiState.Loading
+                }
             }
         }
     }
-//        viewModelScope.launch {
-//            if (!isInternetAvailable(context)) {
-//                val localList = repository.getLocalAnimeList()
-//                _uiState.value = UiState.Success(localList.map { it.toUiModel() }  , true)
-//            } else {
-//                repository.refreshAnimeList()
-//                val response = api.getTopAnime()
-//                _uiState.value = UiState.Success(response.data.map { it.toUiModel() } , false)
-//            }
-//
-////            try {
-////                val localList = repository.getCachedAnime()
-////
-////                if (!isInternetAvailable(context)) {
-////                    // No internet, show cached data
-////                    if (localList.count() >= 0) {
-////                        _uiState.value = UiState.Success(localList)
-////                    } else {
-////                        _uiState.value = UiState.Error("No internet and no cached data")
-////                    }
-////                     Log.d("Ashutoshh", "Offline : true")
-////                } else {
-////                    // Internet is available, fetch from API
-////                    repository.refreshAnimeList()
-////                    val response  = api.getTopAnime()
-////
-////
-////                    _uiState.value = UiState.Success(response.data)
-////                }
-////
-////            } catch (e: Exception) {
-////                e.printStackTrace()
-////                _uiState.value = UiState.Error("Failed to load anime")
-////            }
-//        }
 
+    // Step 2: Fetch from API only if internet is available
+    private fun fetchFromApiIfOnline() {
+        if (!isInternetAvailable(context)) return
+
+        viewModelScope.launch {
+            try {
+                repository.refreshAnimeList()
+                Log.d("HomeViewModel", "Data synced from API")
+            } catch (e: HttpException) {
+                if (e.code() == 429) {
+                    _uiState.value = UiState.Error("Rate limit reached. Try again later.")
+                } else {
+                    _uiState.value = UiState.Error("Failed to fetch anime: ${e.message()}")
+                }
+            } catch (e: Exception) {
+                _uiState.value = UiState.Error("Unexpected error: ${e.localizedMessage}")
+            }
+        }
+    }
 }
